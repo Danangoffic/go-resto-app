@@ -12,5 +12,6 @@ func GetDB(dbAddress string) *gorm.DB {
 		panic("Failed to connect to database")
 	}
 
+	db_seed(db)
 	return db
 }

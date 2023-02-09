@@ -1,12 +1,20 @@
 package main
 
 import (
-	"fmt"
-	"net/http"
+	"crypto/rand"
+	"crypto/rsa"
+	"resto-app/internal/database"
+	"resto-app/internal/delivery/rest"
+	"time"
+
+	// "resto-app/internal/menu"
+	// "resto-app/internal/order"
+	mRepo "resto-app/internal/repository/menu"
+	oRepo "resto-app/internal/repository/order"
+	uRepo "resto-app/internal/repository/user"
+	rUsecase "resto-app/internal/usecase/resto"
 
 	"github.com/labstack/echo/v4"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
 )
 
 const (
@@ -17,85 +25,38 @@ func main() {
 	// db_seed()
 	e := echo.New()
 	// localhost:14045/menu/food
-	e.GET("/menu", getMenu)
+	// e.GET("/menu", getMenu)
 
-	e.Logger.Fatal(e.Start(":14045"))
-}
+	db := database.GetDB(dsn)
 
-type MenuType string
+	//load menu repository
+	menuRepo := mRepo.GetRepository(db)
+	// menuService := menu.NewService(menuRepo)
 
-const (
-	MenuTypeFood  = "food"
-	MenuTypeDrink = "drink"
-)
+	//load order repository
+	orderRepo := oRepo.GetRepository(db)
 
-type MenuItem struct {
-	Name      string `json:"name"`
-	OrderCode string `json:"order_code"`
-	Price     int    `json:"price"`
-	Type      string `json:"type"`
-}
-
-func db_seed() {
-	foodMenu := []MenuItem{
-		{
-			Name:      "Kwetiaw",
-			OrderCode: "kwetiaw-1",
-			Price:     12000,
-			Type:      MenuTypeFood,
-		},
-		{
-			Name:      "Nasi Goreng",
-			OrderCode: "nasi-goreng-1",
-			Price:     16000,
-			Type:      MenuTypeFood,
-		},
-	}
-
-	drinkMenu := []MenuItem{
-		{
-			Name:      "Es Teh",
-			OrderCode: "teh-121",
-			Price:     5500,
-			Type:      MenuTypeDrink,
-		},
-		{
-			Name:      "Teh Panas",
-			OrderCode: "teh-122",
-			Price:     5000,
-			Type:      MenuTypeDrink,
-		},
-	}
-
-	fmt.Println(foodMenu, drinkMenu)
-
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
-
-	db.AutoMigrate(&MenuItem{})
-
-	err = db.First(&MenuItem{}).Error
-	if err == gorm.ErrRecordNotFound {
-		db.Create(foodMenu)
-		db.Create(drinkMenu)
-	}
-
-}
-
-func getMenu(c echo.Context) error {
-	menuType := c.FormValue("menu_type")
-
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
-
+	secret := "AES256Key-32Character12345678910"
+	// orderService := order.NewService(orderRepo, menuRepo)
+	signKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
 		panic(err)
 	}
 
-	var menuData []MenuItem
+	accessTimeExp := 60 * time.Second
 
-	db.Where(MenuItem{Type: menuType}).Find(&menuData).Order("name ASC")
+	userRepo, err := uRepo.GetRepository(db, secret, 1, 64*1024, 4, 32, signKey, accessTimeExp)
+	if err != nil {
+		panic(err)
+	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"data":   menuData,
-		"status": "success",
-	})
+	restoCase := rUsecase.GetUsecase(menuRepo, orderRepo, userRepo)
+	// load handlers
+	handler := rest.NewHandler(restoCase)
+	// handler := rest.NewHandler(menuService, orderService)
+
+	rest.LoadMiddelwares(e)
+	rest.LoadRouters(e, handler)
+
+	e.Logger.Fatal(e.Start(":14045"))
 }
