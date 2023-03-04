@@ -6,6 +6,7 @@ import (
 	"resto-app/internal/database"
 	"resto-app/internal/delivery/rest"
 	"resto-app/internal/logger"
+	"resto-app/internal/tracing"
 	"time"
 
 	// "resto-app/internal/menu"
@@ -25,6 +26,7 @@ const (
 func main() {
 	// db_seed()
 	logger.Init()
+	tracing.Init("http://localhost:14045")
 	e := echo.New()
 	// localhost:14045/menu/food
 	// e.GET("/menu", getMenu)
