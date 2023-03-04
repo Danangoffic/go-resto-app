@@ -5,13 +5,18 @@ import (
 	"fmt"
 	"net/http"
 	"resto-app/internal/model"
+	"resto-app/internal/tracing"
 
 	"github.com/labstack/echo/v4"
 )
 
 func (h *handler) RegisterUser(c echo.Context) error {
+	ctx, span := tracing.CreateSpan(c.Request().Context(), "Register new User")
+	defer span.End()
+
 	var request model.RegisterRequest
 	err := json.NewDecoder(c.Request().Body).Decode(&request)
+
 	if err != nil {
 		fmt.Printf("Got Error %s\n", err.Error())
 		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
@@ -20,7 +25,7 @@ func (h *handler) RegisterUser(c echo.Context) error {
 		})
 	}
 
-	userData, err := h.restoUsecase.RegisterUser(request)
+	userData, err := h.restoUsecase.RegisterUser(ctx, request)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
 			"message": err.Error(),
@@ -36,6 +41,9 @@ func (h *handler) RegisterUser(c echo.Context) error {
 }
 
 func (h *handler) Login(c echo.Context) error {
+	ctx, span := tracing.CreateSpan(c.Request().Context(), "Register new User")
+	defer span.End()
+
 	var request model.LoginRequest
 	err := json.NewDecoder(c.Request().Body).Decode(&request)
 	if err != nil {
@@ -46,7 +54,7 @@ func (h *handler) Login(c echo.Context) error {
 		})
 	}
 
-	sessionData, err := h.restoUsecase.Login(request)
+	sessionData, err := h.restoUsecase.Login(ctx, request)
 	if err != nil {
 		fmt.Printf("Got Error %s\n", err.Error())
 		return c.JSON(http.StatusInternalServerError, map[string]interface{}{

@@ -1,15 +1,18 @@
 package resto
 
-import "resto-app/internal/model"
+import (
+	"context"
+	"resto-app/internal/model"
+)
 
 type Usecase interface {
-	GetMenuList(menuType string) ([]model.MenuItem, error)
-	GetMenu(orderCode string) (model.MenuItem, error)
+	GetMenu(ctx context.Context, orderCode string) (model.MenuItem, error)
+	GetMenuList(ctx context.Context, menuType string) ([]model.MenuItem, error)
 
-	Order(request model.OrderMenuRequest) (model.Order, error)
-	GetOrderData(request model.GetOrderDataRequest) (model.Order, error)
+	Order(ctx context.Context, request model.OrderMenuRequest) (model.Order, error)
+	GetOrderData(ctx context.Context, request model.GetOrderDataRequest) (model.Order, error)
 
-	RegisterUser(request model.RegisterRequest) (model.User, error)
-	Login(request model.LoginRequest) (model.UserSession, error)
-	CheckSession(data model.UserSession) (userID string, err error)
+	RegisterUser(ctx context.Context, request model.RegisterRequest) (model.User, error)
+	Login(ctx context.Context, request model.LoginRequest) (model.UserSession, error)
+	CheckSession(ctx context.Context, data model.UserSession) (userID string, err error)
 }

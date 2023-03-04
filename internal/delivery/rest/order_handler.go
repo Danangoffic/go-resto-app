@@ -6,11 +6,16 @@ import (
 	"net/http"
 	"resto-app/internal/model"
 	"resto-app/internal/model/constant"
+	"resto-app/internal/tracing"
 
 	"github.com/labstack/echo/v4"
+	"github.com/sirupsen/logrus"
 )
 
 func (h *handler) Order(c echo.Context) error {
+	ctx, span := tracing.CreateSpan(c.Request().Context(), "Order")
+	defer span.End()
+
 	var request model.OrderMenuRequest
 	err := json.NewDecoder(c.Request().Body).Decode(&request)
 	if err != nil {
@@ -24,7 +29,7 @@ func (h *handler) Order(c echo.Context) error {
 	request.UserID = userID
 
 	fmt.Printf("request api : %v\n", request)
-	orderData, err := h.restoUsecase.Order(request)
+	orderData, err := h.restoUsecase.Order(ctx, request)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
 			"message": err.Error(),
@@ -39,15 +44,20 @@ func (h *handler) Order(c echo.Context) error {
 }
 
 func (h *handler) GetOrderData(c echo.Context) error {
+	ctx, span := tracing.CreateSpan(c.Request().Context(), "Order")
+	defer span.End()
+
 	orderID := c.Param("orderID")
 	userID := c.Request().Context().Value(constant.AuthContextKey).(string)
 
-	orderData, err := h.restoUsecase.GetOrderData(model.GetOrderDataRequest{
+	orderData, err := h.restoUsecase.GetOrderData(ctx, model.GetOrderDataRequest{
 		OrderID: orderID,
 		UserID:  userID,
 	})
 	if err != nil {
-		fmt.Printf("Error %s\n", err.Error())
+		logrus.WithFields(logrus.Fields{
+			"err": err,
+		}).Error("[delivery][rest][order_handler][GetOrderData] unable to get order data\n")
 
 		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
 			"message": err.Error(),

@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
@@ -15,7 +16,7 @@ const (
 	cryptFormat = "$argon2id$v=%d,$m=%d,t=%d,p=%d$%s$%s"
 )
 
-func (r *userRepo) GenerateUserHash(password string) (hash string, err error) {
+func (r *userRepo) GenerateUserHash(ctx context.Context, password string) (hash string, err error) {
 	salt := make([]byte, 16)
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
@@ -23,7 +24,7 @@ func (r *userRepo) GenerateUserHash(password string) (hash string, err error) {
 
 	argonHash := argon2.IDKey([]byte(password), salt, r.time, r.memory, r.threads, r.keyLen)
 
-	b64Hash := r.encrypt(argonHash)
+	b64Hash := r.encrypt(ctx, argonHash)
 	b64Salt := base64.RawStdEncoding.EncodeToString(salt)
 
 	encodedHash := fmt.Sprintf(cryptFormat, argon2.Version, r.memory, r.time, r.threads, b64Salt, b64Hash)
@@ -31,14 +32,14 @@ func (r *userRepo) GenerateUserHash(password string) (hash string, err error) {
 	return encodedHash, nil
 }
 
-func (r *userRepo) encrypt(text []byte) string {
+func (r *userRepo) encrypt(ctx context.Context, text []byte) string {
 	nonce := make([]byte, r.gcm.NonceSize())
 
 	cipherText := r.gcm.Seal(nonce, nonce, text, nil)
 	return base64.StdEncoding.EncodeToString(cipherText)
 }
 
-func (r *userRepo) decrypt(cipherText string) ([]byte, error) {
+func (r *userRepo) decrypt(ctx context.Context, cipherText string) ([]byte, error) {
 	decoded, err := base64.StdEncoding.DecodeString(cipherText)
 	if err != nil {
 		return nil, err
@@ -55,7 +56,7 @@ func (r *userRepo) decrypt(cipherText string) ([]byte, error) {
 	)
 }
 
-func (r *userRepo) comparePassword(password, hash string) (bool, error) {
+func (r *userRepo) comparePassword(ctx context.Context, password, hash string) (bool, error) {
 	parts := strings.Split(hash, "$")
 	fmt.Printf("parts : %v\n", parts)
 	var memory, time uint32
@@ -79,7 +80,7 @@ func (r *userRepo) comparePassword(password, hash string) (bool, error) {
 
 		hash := parts[5]
 
-		decryptedHash, err := r.decrypt(hash)
+		decryptedHash, err := r.decrypt(ctx, hash)
 		if err != nil {
 			return false, err
 		}

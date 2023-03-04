@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"net/http"
 	"resto-app/internal/model/constant"
+	"resto-app/internal/tracing"
 	"resto-app/internal/usecase/resto"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/sirupsen/logrus"
 )
 
 func LoadMiddelwares(e *echo.Echo) {
@@ -28,9 +30,14 @@ type authMiddleware struct {
 
 func (am *authMiddleware) CheckAuth(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		ctx, span := tracing.CreateSpan(c.Request().Context(), "Check Authentication")
+		defer span.End()
 		fmt.Printf("request :\n%v", json.NewDecoder(c.Request().Body))
 		sessionData, err := GetSessionData(c.Request())
 		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"err": err,
+			}).Error("[delivery][rest][middleware][CheckAuth] unable to get session data\n")
 			return &echo.HTTPError{
 				Code: http.StatusUnauthorized,
 				Message: map[string]interface{}{
@@ -41,8 +48,11 @@ func (am *authMiddleware) CheckAuth(next echo.HandlerFunc) echo.HandlerFunc {
 			}
 		}
 
-		userID, err := am.restoUsercase.CheckSession(sessionData)
+		userID, err := am.restoUsercase.CheckSession(ctx, sessionData)
 		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"err": err,
+			}).Error("[delivery][rest][middleware][CheckAuth] unable to get session data\n")
 			return &echo.HTTPError{
 				Code: http.StatusUnauthorized,
 				Message: map[string]interface{}{
@@ -54,6 +64,9 @@ func (am *authMiddleware) CheckAuth(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		if userID == "" {
+			logrus.WithFields(logrus.Fields{
+				"err": err,
+			}).Error("[delivery][rest][middleware][CheckAuth] Invalid token\n")
 			return &echo.HTTPError{
 				Code: http.StatusUnauthorized,
 				Message: map[string]interface{}{

@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"resto-app/internal/database"
 	"resto-app/internal/delivery/rest"
+	"resto-app/internal/logger"
 	"time"
 
 	// "resto-app/internal/menu"
@@ -23,6 +24,7 @@ const (
 
 func main() {
 	// db_seed()
+	logger.Init()
 	e := echo.New()
 	// localhost:14045/menu/food
 	// e.GET("/menu", getMenu)

@@ -10,6 +10,7 @@ func LoadRouters(e *echo.Echo, handler *handler) {
 
 	menuGroup := api.Group("/menu")
 	menuGroup.GET("", handler.GetMenuList)
+	menuGroup.GET("/:OrderCode", handler.GetMenuDetail)
 
 	orderGroup := api.Group("/order", authMiddleware.CheckAuth)
 	orderGroup.POST("", handler.Order)

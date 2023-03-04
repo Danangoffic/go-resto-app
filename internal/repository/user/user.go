@@ -1,11 +1,13 @@
 package user
 
 import (
+	"context"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rsa"
 	"errors"
 	"resto-app/internal/model"
+	"resto-app/internal/tracing"
 	"time"
 
 	"gorm.io/gorm"
@@ -54,17 +56,23 @@ func GetRepository(
 	}, nil
 }
 
-func (r *userRepo) RegisterUser(userData model.User) (model.User, error) {
-	if err := r.db.Create(&userData).Error; err != nil {
+func (r *userRepo) RegisterUser(ctx context.Context, userData model.User) (model.User, error) {
+	ctx, span := tracing.CreateSpan(ctx, "RegisterUser")
+	defer span.End()
+
+	if err := r.db.WithContext(ctx).Create(&userData).Error; err != nil {
 		return model.User{}, err
 	}
 
 	return userData, nil
 }
 
-func (r *userRepo) CheckRegistered(username string) (bool, error) {
+func (r *userRepo) CheckRegistered(ctx context.Context, username string) (bool, error) {
+	ctx, span := tracing.CreateSpan(ctx, "CheckRegistered")
+	defer span.End()
+
 	var userData model.User
-	err := r.db.Where(model.User{Username: username}).First(&userData).Error
+	err := r.db.WithContext(ctx).Where(model.User{Username: username}).First(&userData).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return false, nil
@@ -74,13 +82,16 @@ func (r *userRepo) CheckRegistered(username string) (bool, error) {
 	return userData.ID != "", nil
 }
 
-func (r *userRepo) ValidateUser(username string, password string) (model.User, error) {
+func (r *userRepo) ValidateUser(ctx context.Context, username string, password string) (model.User, error) {
+	ctx, span := tracing.CreateSpan(ctx, "ValidateUser")
+	defer span.End()
+
 	var userData model.User
-	hashPassword, err := r.GenerateUserHash(password)
+	hashPassword, err := r.GenerateUserHash(ctx, password)
 	if err != nil {
 		return model.User{}, err
 	}
-	err = r.db.Where(model.User{Username: username, Hash: hashPassword}).First(&userData).Error
+	err = r.db.WithContext(ctx).Where(model.User{Username: username, Hash: hashPassword}).First(&userData).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return model.User{}, errors.New("User not found")
@@ -90,9 +101,12 @@ func (r *userRepo) ValidateUser(username string, password string) (model.User, e
 	return userData, nil
 }
 
-func (r *userRepo) GetUserData(username string) (model.User, error) {
+func (r *userRepo) GetUserData(ctx context.Context, username string) (model.User, error) {
+	ctx, span := tracing.CreateSpan(ctx, "GetUserData")
+	defer span.End()
+
 	var userData model.User
-	err := r.db.Where(model.User{Username: username}).First(&userData).Error
+	err := r.db.WithContext(ctx).Where(model.User{Username: username}).First(&userData).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return userData, nil
@@ -102,11 +116,14 @@ func (r *userRepo) GetUserData(username string) (model.User, error) {
 	return userData, nil
 }
 
-func (r *userRepo) VerifyLogin(username, password string, userData model.User) (bool, error) {
+func (r *userRepo) VerifyLogin(ctx context.Context, username, password string, userData model.User) (bool, error) {
+	ctx, span := tracing.CreateSpan(ctx, "VerifyLogin")
+	defer span.End()
+
 	if username != userData.Username {
 		return false, nil
 	}
-	verified, err := r.comparePassword(password, userData.Hash)
+	verified, err := r.comparePassword(ctx, password, userData.Hash)
 	if err != nil {
 		return false, err
 	}
