@@ -5,6 +5,7 @@ import (
 	"resto-app/internal/model"
 )
 
+//go:generate mockgen -package=mocks -mock_names=RestoUsecase=MockRestoUsecase -destination=../../mocks/resto_usecase_mock.go -source=usecase.go
 type Usecase interface {
 	GetMenu(ctx context.Context, orderCode string) (model.MenuItem, error)
 	GetMenuList(ctx context.Context, menuType string) ([]model.MenuItem, error)
