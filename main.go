@@ -53,7 +53,52 @@ func nameProducer(c chan string) {
 	c <- "Apple"
 }
 
+func SumIntsOrFloats[K comparable, V int64 | float64](m map[K]V) V {
+	var total V
+	for _, v := range m {
+		total += v
+	}
+	return total
+}
+
+type Number interface {
+	int | int32 | int64 | float32 | float64
+}
+
+func SumNumbers[K comparable, V Number](m map[K]V) V {
+	var total V
+	for _, v := range m {
+		total += v
+	}
+	return total
+}
+
 func main() {
+
+}
+
+func genericsFunc() {
+	ints := map[string]int64{
+		"first":  34,
+		"second": 12,
+	}
+
+	floats := map[string]float64{
+		"first":  35.98,
+		"second": 32.3,
+	}
+
+	fmt.Printf("Generic Sum total int and float: %v and %v\n",
+		SumIntsOrFloats(ints),
+		SumIntsOrFloats(floats),
+	)
+	fmt.Printf("Generic Sum total int and float with type interface: %v and %v\n",
+		SumNumbers(ints),
+		SumNumbers(floats),
+	)
+}
+
+func channels() {
 	c := make(chan string) // channel dengan string
 	out := make(chan int)  // channel dengan tipe int
 	// go greet(c)
