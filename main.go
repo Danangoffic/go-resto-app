@@ -7,6 +7,67 @@ import (
 	"time"
 )
 
+type myService struct {
+	cache *cache
+}
+
+func (ms *myService) expensiveFunction(key string) string {
+	for i := 0; i < 50000; i++ {
+		fmt.Printf("Data index ke : %v", i)
+	}
+	return fmt.Sprint("data-", key, ":success")
+}
+
+func (ms *myService) GetData(key string) string {
+	if ms.cache != nil {
+		if cacheData := ms.cache.get(key); cacheData != "" {
+			return cacheData
+		}
+	}
+	result := ms.expensiveFunction(key)
+	ms.cache.set(key, result)
+	return result
+}
+
+type cache struct {
+	storage map[string]string
+}
+
+func (c *cache) set(key, value string) {
+	c.storage[key] = value
+}
+
+func (c *cache) get(key string) string {
+	v, ok := c.storage[key]
+	if !ok {
+		return ""
+	}
+	return v
+}
+
+func main() {
+	cacher := &cache{
+		storage: map[string]string{},
+	}
+	service := &myService{
+		cache: cacher,
+	}
+
+	key := "mydata1"
+
+	start := time.Now()
+	fmt.Println("calling expensive function")
+	result := service.GetData(key)
+	fmt.Println("expensive function called, duration: ", time.Since(start))
+	fmt.Println(result)
+
+	start = time.Now()
+	fmt.Println("calling expensive function")
+	result = service.GetData(key)
+	fmt.Println("cache expensive function called, duration: ", time.Since(start))
+	fmt.Println(result)
+}
+
 func testPrint(id int) {
 	for i := 0; i < 10; i++ {
 		fmt.Printf("[%d] counting %d\n", id, i)
@@ -71,10 +132,6 @@ func SumNumbers[K comparable, V Number](m map[K]V) V {
 		total += v
 	}
 	return total
-}
-
-func main() {
-
 }
 
 func genericsFunc() {
